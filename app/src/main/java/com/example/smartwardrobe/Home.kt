@@ -1,8 +1,5 @@
 package com.example.smartwardrobe
-import com.example.smartwardrobe.data.repository.WardrobeRepository
-import com.example.smartwardrobe.data.model.WardrobeItem
-import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.foundation.Image
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -14,35 +11,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import com.example.smartwardrobe.data.util.Result
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.smartwardrobe.data.model.WardrobeItem
 import com.example.smartwardrobe.data.model.ClothingCategory
+import com.example.smartwardrobe.ui.home.HomeViewModel
+import kotlinx.coroutines.launch
 
-@Preview(showBackground = true)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Home() {
+fun Home(viewModel: HomeViewModel = viewModel()) {
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Firebase wardrobe integration
-    val wardrobeRepo = remember { WardrobeRepository() }
-    var wardrobeItems by remember { mutableStateOf<List<WardrobeItem>>(emptyList()) }
+    // Collect wardrobe items from ViewModel
+    val wardrobeItems by viewModel.items.collectAsState()
 
-    LaunchedEffect(Unit) {
-        wardrobeRepo.getAllWardrobeItemsFlow().collectLatest { result ->
-            when (result) {
-                is Result.Success -> wardrobeItems = result.data
-                else -> { /* ignore */ }
-            }
-        }
-    }
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -70,33 +56,21 @@ fun Home() {
                             Icon(Icons.Filled.Menu, contentDescription = "Menu")
                         }
                     },
-                    /*actions = {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_profile_example),
-                            contentDescription = "Profile",
-                            modifier = Modifier.size(36.dp),
-                            contentScale = ContentScale.Crop
-                        )
-                    },*/
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 )
             },
+
             floatingActionButton = {
                 FloatingActionButton(onClick = {
                     scope.launch {
-                        val newItem = WardrobeItem(
-                            name = "New Item",
-                            category = ClothingCategory.TOP
-                        )
-                        wardrobeRepo.addWardrobeItem(newItem)
+                        viewModel.addItem()
                     }
                 }) {
                     Icon(Icons.Default.Add, contentDescription = "Add")
                 }
             }
-
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -122,7 +96,6 @@ fun Home() {
                         WardrobeGridItem(text = item.name)
                     }
                 }
-
             }
         }
     }
@@ -133,7 +106,7 @@ private fun DrawerItem(label: String) {
     NavigationDrawerItem(
         label = { Text(label) },
         selected = false,
-        onClick = { /* TODO: Navigation handling */ },
+        onClick = { /* Add navigation if needed */ },
         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
     )
 }
@@ -155,4 +128,3 @@ fun WardrobeGridItem(text: String) {
         }
     }
 }
-

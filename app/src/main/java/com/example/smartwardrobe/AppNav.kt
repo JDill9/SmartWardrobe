@@ -43,7 +43,7 @@ fun AppNavigation() {
 
 
         composable("main") {
-            MainScreen() // contains bottom navigation + inner nav host
+            MainScreen(rootNavController = navController)
         }
     }
 }

@@ -20,7 +20,8 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Account(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onLogoutClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -101,11 +102,12 @@ fun Account(
 
             // Logout button
             Button(
-                onClick = { /* log out */ },
+                onClick = { onLogoutClick() },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Logout")
             }
+
         }
     }
 }
@@ -128,7 +130,8 @@ fun ProfileListItem(label: String, value: String) {
 fun AccountScreenPreview() {
     MaterialTheme() {
         Account(
-            onBackClick = {}
+            onBackClick = {},
+            onLogoutClick = {}
         )
     }
 }
