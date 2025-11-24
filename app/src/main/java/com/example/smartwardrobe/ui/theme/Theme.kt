@@ -1,54 +1,60 @@
 package com.example.smartwardrobe.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = PrimaryBlue,
+    onPrimary = Color.White,
+    primaryContainer = PrimaryBlueDark,
+    onPrimaryContainer = Color.White,
+    secondary = PrimaryBlueLight,
+    onSecondary = DarkBackground,
+    secondaryContainer = DarkSurfaceVariant,
+    onSecondaryContainer = TextOnDark,
+    tertiary = Success,
+    background = DarkBackground,
+    onBackground = TextOnDark,
+    surface = DarkSurface,
+    onSurface = TextOnDark,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = NeutralDark,
+    error = Error,
+    onError = Color.White,
+    outline = DarkSurfaceVariant
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = PrimaryBlue,
     onPrimary = Color.White,
+    primaryContainer = PrimaryBlueLight,
+    onPrimaryContainer = DarkBackground,
+    secondary = PrimaryBlueDark,
     onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    secondaryContainer = LightSurfaceVariant,
+    onSecondaryContainer = TextOnLight,
+    tertiary = Success,
+    background = LightBackground,
+    onBackground = TextOnLight,
+    surface = LightSurface,
+    onSurface = TextOnLight,
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = TextSecondary,
+    error = Error,
+    onError = Color.White,
+    outline = LightSurfaceVariant
 )
 
 @Composable
 fun SmartWardrobeTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    darkTheme: Boolean = true, // Default to dark theme for SmartWardrobe
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,

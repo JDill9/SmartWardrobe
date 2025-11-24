@@ -5,6 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.google.firebase.auth.FirebaseAuth
+import com.example.smartwardrobe.ui.additem.AddItemScreenHost
 
 @Composable
 fun BottomNavGraph(
@@ -17,7 +18,11 @@ fun BottomNavGraph(
     ) {
 
         composable(BottomNavItem.Home.route) {
-            Home()
+            Home(
+                onAddItemClick = {
+                    navController.navigate("addItem")
+                }
+            )
         }
 
         composable(BottomNavItem.Account.route) {
@@ -39,6 +44,13 @@ fun BottomNavGraph(
 
         composable(BottomNavItem.Saved.route) {
             Saved()
+        }
+
+        composable("addItem") {
+            AddItemScreenHost(
+                onBackClick = { navController.popBackStack() },
+                onItemSaved = { navController.popBackStack() }
+            )
         }
     }
 }

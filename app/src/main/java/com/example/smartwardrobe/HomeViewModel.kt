@@ -34,4 +34,8 @@ class HomeViewModel(
         )
         repo.addWardrobeItem(newItem)
     }
+
+    suspend fun deleteItem(itemId: String) {
+        repo.deleteWardrobeItem(itemId)
+    }
 }

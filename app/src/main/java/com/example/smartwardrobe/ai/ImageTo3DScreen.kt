@@ -14,6 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -41,12 +44,24 @@ fun ImageTo3DScreen(
 
     val state by viewModel.uiState.collectAsState()
 
+    // State for 3D viewer dialog
+    var selectedModelForViewer by remember { mutableStateOf<RenderedModel?>(null) }
+
     // Optional place to hook Snackbar/Toast later if you want
     LaunchedEffect(state.errorMessage) {
         // e.g., show snackbar
     }
 
     val scrollState = rememberScrollState()
+
+    // Show 3D model viewer dialog when a model is selected
+    selectedModelForViewer?.let { model ->
+        ModelViewerDialog(
+            modelUrl = model.modelUrl,
+            modelId = model.id,
+            onDismiss = { selectedModelForViewer = null }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -129,6 +144,10 @@ fun ImageTo3DScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
+                            .clickable {
+                                // Open 3D viewer when card is tapped
+                                selectedModelForViewer = model
+                            }
                     ) {
                         Column(
                             modifier = Modifier.padding(12.dp)
@@ -151,8 +170,9 @@ fun ImageTo3DScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = "Model URL: ${model.modelUrl}",
-                                style = MaterialTheme.typography.bodySmall
+                                text = "Tap to view in 3D",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }

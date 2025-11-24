@@ -1,23 +1,36 @@
 package com.example.smartwardrobe.ai
 
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 object AiNetworkModule {
 
-    // TODO: replace with your real backend URL when it's ready
-    // Make sure this ends with a slash `/`
-    private const val BASE_URL = "https://example.com/api/"
+    private const val BASE_URL = "https://api.replicate.com/v1/"
+
+    private const val API_TOKEN = "r8_S8v5utkC9ftWKsBMZl6WuENV1iolzML4XRYji"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        // For debugging – you can change to NONE for release builds
         level = HttpLoggingInterceptor.Level.BODY
     }
 
+    private val authInterceptor = Interceptor { chain ->
+        val request = chain.request().newBuilder()
+            .addHeader("Authorization", "Bearer $API_TOKEN")
+            .addHeader("Content-Type", "application/json")
+            .build()
+        chain.proceed(request)
+    }
+
     private val client: OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(authInterceptor)
         .addInterceptor(loggingInterceptor)
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
     val api: AiApi by lazy {
