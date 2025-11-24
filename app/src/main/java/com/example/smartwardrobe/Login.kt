@@ -15,7 +15,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun Login(onLoginClick: (String, String) -> Unit) {
+fun LoginScreen(
+    onLoginClick: (String, String) -> Unit,
+    onRegisterClick: (String, String) -> Unit
+) {
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -56,6 +59,15 @@ fun Login(onLoginClick: (String, String) -> Unit) {
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Login")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = { onRegisterClick(email, password) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Create Account")
         }
     }
 }

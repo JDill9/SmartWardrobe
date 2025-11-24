@@ -25,6 +25,7 @@ data class Outfit(
     val occasion: List<String> = emptyList(),
     val season: Season? = null,
     val isFavorite: Boolean = false,
+    val imageUrl: String = "",  //added for image
     @ServerTimestamp
     val createdAt: Date? = null,
     @ServerTimestamp

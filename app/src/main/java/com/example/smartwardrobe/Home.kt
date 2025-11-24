@@ -1,5 +1,7 @@
 package com.example.smartwardrobe
-
+import com.example.smartwardrobe.data.repository.WardrobeRepository
+import com.example.smartwardrobe.data.model.WardrobeItem
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -18,6 +20,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import com.example.smartwardrobe.data.util.Result
+import com.example.smartwardrobe.data.model.ClothingCategory
 
 @Preview(showBackground = true)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,8 +31,18 @@ fun Home() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    val items = remember { (1..20).map { "Item $it" } }
+    // Firebase wardrobe integration
+    val wardrobeRepo = remember { WardrobeRepository() }
+    var wardrobeItems by remember { mutableStateOf<List<WardrobeItem>>(emptyList()) }
 
+    LaunchedEffect(Unit) {
+        wardrobeRepo.getAllWardrobeItemsFlow().collectLatest { result ->
+            when (result) {
+                is Result.Success -> wardrobeItems = result.data
+                else -> { /* ignore */ }
+            }
+        }
+    }
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -70,10 +84,19 @@ fun Home() {
                 )
             },
             floatingActionButton = {
-                FloatingActionButton(onClick = { /* TODO */ }) {
+                FloatingActionButton(onClick = {
+                    scope.launch {
+                        val newItem = WardrobeItem(
+                            name = "New Item",
+                            category = ClothingCategory.TOP
+                        )
+                        wardrobeRepo.addWardrobeItem(newItem)
+                    }
+                }) {
                     Icon(Icons.Default.Add, contentDescription = "Add")
                 }
             }
+
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -95,10 +118,11 @@ fun Home() {
                     contentPadding = PaddingValues(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(items) { item ->
-                        WardrobeGridItem(text = item)
+                    items(wardrobeItems) { item ->
+                        WardrobeGridItem(text = item.name)
                     }
                 }
+
             }
         }
     }

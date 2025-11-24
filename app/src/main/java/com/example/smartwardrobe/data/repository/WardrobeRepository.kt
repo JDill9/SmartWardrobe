@@ -1,5 +1,5 @@
 package com.example.smartwardrobe.data.repository
-
+import android.net.Uri
 import com.example.smartwardrobe.data.model.ClothingCategory
 import com.example.smartwardrobe.data.model.WardrobeItem
 import com.example.smartwardrobe.data.util.Result
@@ -10,6 +10,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.util.Date
 
 /**
  * Repository for Wardrobe operations
@@ -17,7 +18,8 @@ import kotlinx.coroutines.tasks.await
  */
 class WardrobeRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val storageRepo: StorageRepository = StorageRepository()
 ) {
     private val wardrobeCollection = firestore.collection("wardrobeItems")
 
@@ -47,6 +49,42 @@ class WardrobeRepository(
             Result.Error(e)
         }
     }
+
+    suspend fun addWardrobeItemWithImage(
+        item: WardrobeItem,
+        imageUri: Uri
+    ): Result<WardrobeItem> {
+        return try {
+            val userId = getCurrentUserId()
+
+            // 1. Upload image to Storage
+            val uploadResult = storageRepo.uploadImage(imageUri)
+            if (uploadResult !is Result.Success) {
+                return Result.Error(Exception("Image upload failed"))
+            }
+
+            val imageUrl = uploadResult.data
+
+            // 2. Save item to Firestore
+            val itemWithData = item.copy(
+                userId = userId,
+                imageUrl = imageUrl,
+                createdAt = Date(),
+                updatedAt = Date()
+
+            )
+
+            val docRef = wardrobeCollection.add(itemWithData).await()
+            val savedItem = itemWithData.copy(id = docRef.id)
+
+            docRef.set(savedItem).await()
+
+            Result.Success(savedItem)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+
 
     /**
      * Get a wardrobe item by ID

@@ -1,4 +1,8 @@
 package com.example.smartwardrobe
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.smartwardrobe.data.repository.AuthRepository
+import com.example.smartwardrobe.data.util.Result
+import kotlinx.coroutines.launch
 
 import androidx.navigation.compose.*
 import androidx.compose.runtime.Composable
@@ -10,14 +14,33 @@ fun AppNavigation() {
     NavHost(navController = navController, startDestination = "login") {
 
         composable("login") {
-            Login { email, password ->
-                if (email == "test@gmail.com" && password == "123456") {
-                    navController.navigate("main") {
-                        popUpTo("login") { inclusive = true }
+            val auth = AuthRepository()
+            val scope = rememberCoroutineScope()
+
+            LoginScreen(
+                onLoginClick = { email, password ->
+                    scope.launch {
+                        val result = auth.signIn(email, password)
+                        if (result is Result.Success) {
+                            navController.navigate("main") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                    }
+                },
+                onRegisterClick = { email, password ->
+                    scope.launch {
+                        val result = auth.registerUser(email, password, displayName = email.substringBefore("@"))
+                        if (result is Result.Success) {
+                            navController.navigate("main") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
                     }
                 }
-            }
+            )
         }
+
 
         composable("main") {
             MainScreen() // contains bottom navigation + inner nav host

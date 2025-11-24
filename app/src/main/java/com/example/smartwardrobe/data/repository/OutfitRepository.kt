@@ -1,4 +1,6 @@
 package com.example.smartwardrobe.data.repository
+import java.util.Date
+import android.net.Uri
 
 import com.example.smartwardrobe.data.model.Outfit
 import com.example.smartwardrobe.data.model.Season
@@ -34,8 +36,15 @@ class OutfitRepository(
     suspend fun createOutfit(outfit: Outfit): Result<Outfit> {
         return try {
             val userId = getCurrentUserId()
-            val outfitWithUserId = outfit.copy(userId = userId)
-            
+            val now = Date()
+
+            val outfitWithUserId = outfit.copy(
+                userId = userId,
+                createdAt = now,
+                updatedAt = now
+            )
+
+
             val docRef = outfitCollection.add(outfitWithUserId).await()
             val createdOutfit = outfitWithUserId.copy(id = docRef.id)
             
@@ -47,6 +56,48 @@ class OutfitRepository(
             Result.Error(e)
         }
     }
+
+    /**
+     * Create a new outfit WITH uploaded image
+     */
+    suspend fun createOutfitWithImage(
+        outfit: Outfit,
+        imageUri: Uri
+    ): Result<Outfit> {
+        return try {
+            val userId = getCurrentUserId()
+
+            // Upload image first
+            val storageRepo = StorageRepository()
+            val uploadResult = storageRepo.uploadImage(imageUri)
+
+            if (uploadResult !is Result.Success) {
+                return Result.Error(Exception("Image upload failed"))
+            }
+
+            val imageUrl = uploadResult.data
+
+            // Add user + image URL to outfit
+            val outfitWithData = outfit.copy(
+                userId = userId,
+                imageUrl = imageUrl,
+                createdAt = Date(),
+                updatedAt = Date()
+            )
+
+            // Save outfit to Firestore
+            val docRef = outfitCollection.add(outfitWithData).await()
+            val savedOutfit = outfitWithData.copy(id = docRef.id)
+
+            docRef.set(savedOutfit).await()
+
+            Result.Success(savedOutfit)
+
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+
 
     /**
      * Get an outfit by ID
@@ -204,7 +255,9 @@ class OutfitRepository(
                 throw Exception("Unauthorized: Cannot update another user's outfit")
             }
 
-            outfitCollection.document(outfit.id).set(outfit).await()
+            val updated = outfit.copy(updatedAt = Date())
+            outfitCollection.document(outfit.id).set(updated).await()
+            Result.Success(updated)
             Result.Success(outfit)
         } catch (e: Exception) {
             Result.Error(e)
