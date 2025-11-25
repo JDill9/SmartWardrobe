@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "397163383423",
+    "project_id": "smart-wardrobe-585f7",
+    "storage_bucket": "smart-wardrobe-585f7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:397163383423:android:8752d72018b59eb5800d4a",
+        "android_client_info": {
+          "package_name": "com.example.smartwardrobe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9q0Ts3LusAwPZqQ2EjpSYf1Mj0KpUqoM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
