@@ -29,6 +29,7 @@ import coil.compose.AsyncImage
 import com.example.smartwardrobe.data.model.ClothingCategory
 import com.example.smartwardrobe.data.model.Season
 import com.example.smartwardrobe.data.model.WardrobeItem
+import com.example.smartwardrobe.data.repository.ModelCacheRepository
 import com.example.smartwardrobe.ai.ModelViewerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,8 +38,12 @@ fun OutfitBuilderScreen(
     onOutfitSaved: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val cacheRepository = remember { ModelCacheRepository(context) }
     val viewModel: OutfitBuilderViewModel = viewModel {
-        OutfitBuilderViewModel(contentResolver = context.contentResolver)
+        OutfitBuilderViewModel(
+            contentResolver = context.contentResolver,
+            cacheRepository = cacheRepository
+        )
     }
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()

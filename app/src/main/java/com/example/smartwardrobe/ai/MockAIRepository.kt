@@ -3,23 +3,41 @@ package com.example.smartwardrobe.ai
 import android.net.Uri
 import kotlinx.coroutines.delay
 
+/**
+ * Simple mock AI repository used for testing the UI
+ * without calling any real external API or using credits.
+ */
 class MockAiRepository : AiRepository {
 
+    /**
+     * Pretend to generate a 3D model from an uploaded image.
+     */
     override suspend fun renderClothingImage(imageUri: Uri): AiRenderResponse {
-        // Simulate AI processing time (2-3 seconds for realism)
+        // Simulate ~2.5 seconds of "AI processing"
         delay(2500L)
 
-        // Sample clothing/fashion GLB models for demo
-        val sampleModels = listOf(
-            "https://raw.githubusercontent.com/AltspaceVR/universal-humanoid-avatar/main/examples/models/female-business.glb",
-            "https://raw.githubusercontent.com/AltspaceVR/universal-humanoid-avatar/main/examples/models/male-casual.glb",
-            "https://models.readyplayer.me/64bfa15f0e72c63d7c3934e6.glb"
+        val mockModel = RenderedModel(
+            id = "mock-${System.currentTimeMillis()}",
+            previewImageUrl = "",
+            modelUrl = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/ToyCar/glTF/ToyCar.gltf"
         )
 
+        return AiRenderResponse(
+            models = listOf(mockModel)
+        )
+    }
+
+    /**
+     * Mock version of loading an existing model by task ID.
+     * Used for testing "load previous render" without hitting real API.
+     */
+    override suspend fun loadExistingModel(taskId: String): AiRenderResponse {
+        delay(500L)
+
         val mockModel = RenderedModel(
-            id = "mock-model-${System.currentTimeMillis()}",
+            id = taskId,
             previewImageUrl = "",
-            modelUrl = sampleModels.random()
+            modelUrl = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/glTF/CesiumMan.gltf"
         )
 
         return AiRenderResponse(

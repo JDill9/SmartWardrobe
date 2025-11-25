@@ -1,190 +1,161 @@
 package com.example.smartwardrobe.ai
 
 import android.net.Uri
-import androidx.compose.foundation.clickable
+import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import com.example.smartwardrobe.data.repository.ModelCacheRepository
 
 /**
- * Screen for the flow:
- * 1) User selects a clothing image
- * 2) Image is sent to AI (mock or real)
- * 3) Preview 3D models are displayed
+ * Main UI for the Image → 3D flow.
  *
- * @param onPickImage callback provided by the host (Activity/Nav graph)
- *        to launch an image picker. It gets a lambda that should be
- *        invoked with the resulting Uri (or null if cancelled).
+ * @param repository        AiRepository implementation (TripoAiRepository or MockAiRepository)
+ * @param cacheRepository   Local model cache (not used directly by UI)
+ * @param onPickImage       Callback that launches the image picker and returns a Uri (or null)
  */
 @Composable
 fun ImageTo3DScreen(
+    repository: AiRepository,
+    cacheRepository: ModelCacheRepository,
     onPickImage: (onResult: (Uri?) -> Unit) -> Unit
 ) {
-    // For now, use the mock AI repo so the feature works without a backend.
-    val viewModel: ImageTo3DViewModel = viewModel(
-        factory = ImageTo3DViewModelFactory(MockAiRepository())
-    )
-
-    val state by viewModel.uiState.collectAsState()
-
-    // State for 3D viewer dialog
-    var selectedModelForViewer by remember { mutableStateOf<RenderedModel?>(null) }
-
-    // Optional place to hook Snackbar/Toast later if you want
-    LaunchedEffect(state.errorMessage) {
-        // e.g., show snackbar
-    }
-
-    val scrollState = rememberScrollState()
-
-    // Show 3D model viewer dialog when a model is selected
-    selectedModelForViewer?.let { model ->
-        ModelViewerDialog(
-            modelUrl = model.modelUrl,
-            modelId = model.id,
-            onDismiss = { selectedModelForViewer = null }
+    // Simple manual ViewModel instance wired to given repository + cache
+    val viewModel = remember {
+        ImageTo3DViewModel(
+            repository = repository,
+            cacheRepository = cacheRepository
         )
     }
 
-    Column(
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Controls if the 3D viewer dialog is visible
+    var showViewerDialog by remember { mutableStateOf(false) }
+
+    // Grab the first model (if present) from the AI response
+    val model = uiState.result?.models?.firstOrNull()
+    val remoteModelUrl = model?.modelUrl.orEmpty()
+
+    LaunchedEffect(remoteModelUrl) {
+        if (remoteModelUrl.isNotBlank()) {
+            Log.d("ImageTo3DScreen", "Remote model URL for viewer: $remoteModelUrl")
+        }
+        if (uiState.cachedModelPath != null) {
+            Log.d(
+                "ImageTo3DScreen",
+                "Model also cached at: ${uiState.cachedModelPath} (viewer still uses REMOTE URL)"
+            )
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
-            .verticalScroll(scrollState),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
-        Text(
-            text = "Image → 3D Preview",
-            style = MaterialTheme.typography.headlineSmall
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 1) Image picker area
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-                .clickable {
-                    // Host (Activity/Nav) will actually launch the picker
-                    onPickImage { uri ->
-                        uri?.let { viewModel.onImageSelected(it) }
-                    }
-                },
-            contentAlignment = Alignment.Center
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (state.selectedImageUri != null) {
-                AsyncImage(
-                    model = state.selectedImageUri,
+            Text(
+                text = "Image → 3D Model (Tripo AI)",
+                style = MaterialTheme.typography.headlineSmall
+            )
+
+            // Selected image preview
+            uiState.selectedImageUri?.let { uri ->
+                Image(
+                    painter = rememberAsyncImagePainter(uri),
                     contentDescription = "Selected clothing image",
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp),
+                    contentScale = ContentScale.Crop
                 )
-            } else {
-                Text("Tap to select a clothing image")
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 2) Generate button
-        Button(
-            onClick = { viewModel.generate3D() },
-            enabled = state.selectedImageUri != null && !state.isProcessing,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            if (state.isProcessing) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Generating 3D Preview…")
-                }
-            } else {
-                Text("Generate 3D Preview")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 3) Result models
-        state.result?.models?.let { models ->
-            if (models.isNotEmpty()) {
-                Text(
-                    text = "Preview Models",
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                models.forEach { model ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable {
-                                // Open 3D viewer when card is tapped
-                                selectedModelForViewer = model
-                            }
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp)
-                        ) {
-                            Text(
-                                text = "Model ID: ${model.id}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            AsyncImage(
-                                model = model.previewImageUrl,
-                                contentDescription = "3D Preview",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp)
-                            )
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Text(
-                                text = "Tap to view in 3D",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+            // Pick image button
+            OutlinedButton(
+                onClick = {
+                    onPickImage { uri ->
+                        uri?.let {
+                            viewModel.onImageSelected(it)
                         }
                     }
                 }
+            ) {
+                Text("Pick Image")
+            }
+
+            // Generate 3D button
+            Button(
+                onClick = { viewModel.generate3D() },
+                enabled = uiState.selectedImageUri != null && !uiState.isProcessing
+            ) {
+                Text("Generate 3D")
+            }
+
+            // Loading indicator
+            if (uiState.isProcessing) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 3.dp
+                    )
+                    Text("Generating 3D model…")
+                }
+            }
+
+            // Error message
+            uiState.errorMessage?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            // If we got a model back, show its ID and a "View 3D Model" button
+            model?.let { m ->
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Model ID: ${m.id}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                // IMPORTANT: view uses REMOTE HTTPS URL, not cached file path
+                if (remoteModelUrl.isNotBlank()) {
+                    Button(
+                        onClick = { showViewerDialog = true }
+                    ) {
+                        Text("View 3D Model")
+                    }
+                }
             }
         }
 
-        if (state.errorMessage != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = state.errorMessage!!,
-                color = MaterialTheme.colorScheme.error
+        // 3D Model Viewer Dialog
+        if (showViewerDialog && remoteModelUrl.isNotBlank()) {
+            ModelViewerDialog(
+                modelUrl = remoteModelUrl,  // <-- REMOTE HTTPS URL HERE
+                modelId = model?.id,
+                onDismiss = { showViewerDialog = false }
             )
         }
     }

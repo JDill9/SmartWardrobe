@@ -1,10 +1,17 @@
 package com.example.smartwardrobe.ai
 
 import android.annotation.SuppressLint
+import android.util.Log
 import android.view.ViewGroup
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import java.io.File
+import java.io.FileInputStream
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -23,7 +30,7 @@ import androidx.compose.ui.viewinterop.AndroidView
  * - Zoom (pinch)
  * - Orbit controls
  *
- * @param modelUrl URL to the .glb or .gltf file
+ * @param modelUrl URL to the .glb or .gltf file (MUST be a valid HTTP/HTTPS URL)
  * @param modelId Optional model ID for display
  * @param onBackClick Callback when back button is pressed
  */
@@ -82,6 +89,11 @@ fun ModelViewerWebView(
     modelUrl: String,
     modifier: Modifier = Modifier
 ) {
+    // Treat modelUrl as the final URL we want model-viewer to load.
+    val modelSrc = modelUrl
+
+    Log.d("ModelViewerWebView", "Loading model from: $modelSrc")
+
     val htmlContent = """
         <!DOCTYPE html>
         <html>
@@ -89,7 +101,7 @@ fun ModelViewerWebView(
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>3D Model Viewer</title>
-            <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+            <script type="module" src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
             <style>
                 html, body {
                     margin: 0;
@@ -113,11 +125,22 @@ fun ModelViewerWebView(
                     font-family: sans-serif;
                     color: #666;
                 }
+                .error {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-family: sans-serif;
+                    color: #f44336;
+                    text-align: center;
+                    padding: 20px;
+                }
             </style>
         </head>
         <body>
             <model-viewer
-                src="$modelUrl"
+                id="viewer"
+                src="$modelSrc"
                 alt="3D clothing model"
                 camera-controls
                 auto-rotate
@@ -128,6 +151,25 @@ fun ModelViewerWebView(
             >
                 <div class="loading" slot="poster">Loading 3D model...</div>
             </model-viewer>
+            <script>
+                const viewer = document.getElementById('viewer');
+
+                viewer.addEventListener('load', () => {
+                    console.log('Model loaded successfully');
+                });
+
+                viewer.addEventListener('error', (event) => {
+                    console.error('Model loading error:', event);
+                    console.error('Model URL:', '$modelSrc');
+                    document.body.innerHTML = '<div class="error">Failed to load 3D model<br><small>Check console for details</small></div>';
+                });
+
+                viewer.addEventListener('progress', (event) => {
+                    console.log('Loading progress:', event.detail.totalProgress);
+                });
+
+                console.log('Model viewer initialized with URL:', '$modelSrc');
+            </script>
         </body>
         </html>
     """.trimIndent()
@@ -141,12 +183,78 @@ fun ModelViewerWebView(
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
 
-                webViewClient = WebViewClient()
+                webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): WebResourceResponse? {
+                        val url = request?.url?.toString() ?: return null
+
+                        // Intercept .glb file requests (handles URLs with query params)
+                        if (url.contains(".glb")) {
+                            Log.d("ModelViewer-Intercept", "Intercepting GLB request: $url")
+
+                            // Extract model ID from URL (UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+                            val modelIdMatch = Regex("([a-f0-9-]{36})").find(url)
+                            val modelId = modelIdMatch?.value
+
+                            if (modelId != null) {
+                                // Check if model exists in cache
+                                val cacheDir = File(context.cacheDir, "3d_models")
+                                val cachedFile = File(cacheDir, "$modelId.glb")
+
+                                if (cachedFile.exists()) {
+                                    Log.d("ModelViewer-Intercept", "✓ Serving from cache: ${cachedFile.absolutePath}")
+                                    try {
+                                        val inputStream = FileInputStream(cachedFile)
+
+                                        // IMPORTANT: Add CORS headers so fetch() API accepts the response
+                                        val headers = mutableMapOf<String, String>()
+                                        headers["Access-Control-Allow-Origin"] = "*"
+                                        headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+                                        headers["Access-Control-Allow-Headers"] = "Content-Type"
+
+                                        return WebResourceResponse(
+                                            "model/gltf-binary",
+                                            "binary",
+                                            200,                    // HTTP 200 OK
+                                            "OK",                   // Status message
+                                            headers,                // CORS headers
+                                            inputStream
+                                        )
+                                    } catch (e: Exception) {
+                                        Log.e("ModelViewer-Intercept", "✗ Error reading cached file", e)
+                                    }
+                                } else {
+                                    Log.d("ModelViewer-Intercept", "Cache miss: ${cachedFile.absolutePath}")
+                                }
+                            } else {
+                                Log.w("ModelViewer-Intercept", "Could not extract model ID from URL: $url")
+                            }
+                        }
+
+                        // Fall back to default behavior (fetch from network)
+                        return super.shouldInterceptRequest(view, request)
+                    }
+                }
+
+                // Enable console logging
+                webChromeClient = object : WebChromeClient() {
+                    override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                        Log.d(
+                            "ModelViewer-JS",
+                            "${consoleMessage.message()} -- From line ${consoleMessage.lineNumber()} of ${consoleMessage.sourceId()}"
+                        )
+                        return true
+                    }
+                }
 
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
                     allowFileAccess = true
+                    allowFileAccessFromFileURLs = true
+                    allowUniversalAccessFromFileURLs = true
                     loadWithOverviewMode = true
                     useWideViewPort = true
                     builtInZoomControls = false
@@ -155,9 +263,9 @@ fun ModelViewerWebView(
                     mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 }
 
-                // Load the HTML with model-viewer
+                // Use a dummy HTTPS base URL (not null) so everything is treated as web content.
                 loadDataWithBaseURL(
-                    "https://localhost/",
+                    "https://example.com",
                     htmlContent,
                     "text/html",
                     "UTF-8",
@@ -166,9 +274,9 @@ fun ModelViewerWebView(
             }
         },
         update = { webView ->
-            // Reload if URL changes
+            // Reload if HTML changes (e.g., different modelSrc)
             webView.loadDataWithBaseURL(
-                "https://localhost/",
+                "https://example.com",
                 htmlContent,
                 "text/html",
                 "UTF-8",
