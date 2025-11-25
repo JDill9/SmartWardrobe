@@ -13,9 +13,9 @@ val DarkSurface = Color(0xFF1F2937)
 val DarkSurfaceVariant = Color(0xFF374151)
 
 // Light Theme Colors
-val LightBackground = Color(0xFFF5F7FA)
-val LightSurface = Color(0xFFFFFFFF)
-val LightSurfaceVariant = Color(0xFFC3CFE2)
+val LightBackground = Color(0xFFFFFFFF)  // Pure white
+val LightSurface = Color(0xFFFFFFFF)     // Pure white
+val LightSurfaceVariant = Color(0xFFF5F5F5)  // Very light gray for subtle contrast
 
 // Neutral Colors
 val NeutralLight = Color(0xFFF5F5F5)

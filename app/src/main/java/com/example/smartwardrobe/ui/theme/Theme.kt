@@ -51,7 +51,7 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun SmartWardrobeTheme(
-    darkTheme: Boolean = true, // Default to dark theme for SmartWardrobe
+    darkTheme: Boolean = false, // Default to light theme with white backgrounds
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
