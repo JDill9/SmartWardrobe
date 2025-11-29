@@ -1,23 +1,28 @@
 package com.example.smartwardrobe.ui.outfit
 
+import android.content.ContentResolver
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.smartwardrobe.ai.TripoAiRepository
 import com.example.smartwardrobe.data.model.ClothingCategory
 import com.example.smartwardrobe.data.model.Outfit
 import com.example.smartwardrobe.data.model.Season
 import com.example.smartwardrobe.data.model.WardrobeItem
+import com.example.smartwardrobe.data.repository.ModelCacheRepository
 import com.example.smartwardrobe.data.repository.OutfitRepository
 import com.example.smartwardrobe.data.repository.WardrobeRepository
-import com.example.smartwardrobe.data.repository.ModelCacheRepository
+import com.example.smartwardrobe.data.util.ImageCompositor
 import com.example.smartwardrobe.data.util.Result
-import com.example.smartwardrobe.ai.TripoAiRepository
-import android.content.ContentResolver
-import android.net.Uri
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 
 data class OutfitBuilderUiState(
     val wardrobeItems: Map<ClothingCategory, List<WardrobeItem>> = emptyMap(),
@@ -38,12 +43,15 @@ class OutfitBuilderViewModel(
     private val wardrobeRepository: WardrobeRepository = WardrobeRepository(),
     private val outfitRepository: OutfitRepository = OutfitRepository(),
     private val contentResolver: ContentResolver,
-    private val cacheRepository: ModelCacheRepository
+    private val cacheRepository: ModelCacheRepository,
+    applicationContext: Context
 ) : ViewModel() {
 
     companion object {
         private const val TAG = "OutfitBuilderViewModel"
     }
+
+    private val appContext = applicationContext.applicationContext
 
     private val aiRepository = TripoAiRepository(
         contentResolver = contentResolver,
@@ -55,6 +63,11 @@ class OutfitBuilderViewModel(
 
     init {
         loadWardrobeItems()
+
+        // Cleanup old composite images
+        viewModelScope.launch(Dispatchers.IO) {
+            ImageCompositor.cleanupOldComposites(appContext)
+        }
     }
 
     private fun loadWardrobeItems() {
@@ -194,9 +207,6 @@ class OutfitBuilderViewModel(
             return
         }
 
-        // Use the first selected item's image for 3D generation
-        val firstItem = selectedItems.first()
-
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isGenerating3D = true,
@@ -205,9 +215,26 @@ class OutfitBuilderViewModel(
             )
 
             try {
-                Log.d(TAG, "Generating 3D model from outfit...")
-                val imageUri = Uri.parse("file://${firstItem.imageUrl}")
-                val response = aiRepository.renderClothingImage(imageUri)
+                // Build map of non-null selected items
+                val itemsByCategory = _uiState.value.selectedItems
+                    .filterValues { it != null }
+                    .mapValues { it.value!! }
+
+                Log.d(TAG, "Compositing ${itemsByCategory.size} items into outfit image...")
+
+                // Composite images on IO dispatcher
+                val compositeUri = withContext(Dispatchers.IO) {
+                    ImageCompositor.compositeOutfitImages(
+                        context = appContext,
+                        selectedItems = itemsByCategory
+                    )
+                }
+
+                Log.d(TAG, "Composite created: $compositeUri")
+                Log.d(TAG, "Generating 3D model from composite...")
+
+                // Generate 3D model from composite
+                val response = aiRepository.renderClothingImage(compositeUri)
 
                 Log.d(TAG, "3D model generated successfully!")
 
@@ -262,11 +289,19 @@ class OutfitBuilderViewModel(
                         generationError = "No 3D model generated"
                     )
                 }
+            } catch (e: IOException) {
+                // Image compositing error
+                Log.e(TAG, "Failed to composite images", e)
+                _uiState.value = _uiState.value.copy(
+                    isGenerating3D = false,
+                    generationError = "Failed to composite images: ${e.message}"
+                )
             } catch (e: Exception) {
+                // AI generation error
                 Log.e(TAG, "Failed to generate 3D model", e)
                 _uiState.value = _uiState.value.copy(
                     isGenerating3D = false,
-                    generationError = e.message ?: "Failed to generate 3D preview"
+                    generationError = "Failed to generate 3D model: ${e.message}"
                 )
             }
         }

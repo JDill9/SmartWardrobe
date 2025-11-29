@@ -42,7 +42,8 @@ fun OutfitBuilderScreen(
     val viewModel: OutfitBuilderViewModel = viewModel {
         OutfitBuilderViewModel(
             contentResolver = context.contentResolver,
-            cacheRepository = cacheRepository
+            cacheRepository = cacheRepository,
+            applicationContext = context.applicationContext
         )
     }
     val state by viewModel.uiState.collectAsState()
