@@ -74,29 +74,34 @@ class OutfitBuilderViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            val result = wardrobeRepository.getAllWardrobeItems()
+            // Use Flow for real-time updates
+            wardrobeRepository.getAllWardrobeItemsFlow().collect { result ->
+                when (result) {
+                    is Result.Success -> {
+                        // Group items by category
+                        val groupedItems = result.data.groupBy { it.category }
 
-            when (result) {
-                is Result.Success -> {
-                    // Group items by category
-                    val groupedItems = result.data.groupBy { it.category }
+                        // Initialize selected items map with null for each category if not already set
+                        val selectedItems = if (_uiState.value.selectedItems.isEmpty()) {
+                            ClothingCategory.entries.associateWith { null as WardrobeItem? }
+                        } else {
+                            _uiState.value.selectedItems
+                        }
 
-                    // Initialize selected items map with null for each category
-                    val selectedItems = ClothingCategory.entries.associateWith { null as WardrobeItem? }
-
-                    _uiState.value = _uiState.value.copy(
-                        wardrobeItems = groupedItems,
-                        selectedItems = selectedItems,
-                        isLoading = false
-                    )
+                        _uiState.value = _uiState.value.copy(
+                            wardrobeItems = groupedItems,
+                            selectedItems = selectedItems,
+                            isLoading = false
+                        )
+                    }
+                    is Result.Error -> {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = result.exception.message
+                        )
+                    }
+                    is Result.Loading -> {}
                 }
-                is Result.Error -> {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = result.exception.message
-                    )
-                }
-                is Result.Loading -> {}
             }
         }
     }

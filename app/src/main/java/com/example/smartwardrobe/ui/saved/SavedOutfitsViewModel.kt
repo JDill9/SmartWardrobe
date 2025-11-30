@@ -39,42 +39,42 @@ class SavedOutfitsViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            // Get all outfits
-            val outfitsResult = outfitRepository.getAllOutfits()
+            // Use Flow for real-time updates
+            outfitRepository.getAllOutfitsFlow().collect { outfitsResult ->
+                when (outfitsResult) {
+                    is Result.Success -> {
+                        // Get all wardrobe items to match with outfits
+                        val itemsResult = wardrobeRepository.getAllWardrobeItems()
 
-            when (outfitsResult) {
-                is Result.Success -> {
-                    // Get all wardrobe items to match with outfits
-                    val itemsResult = wardrobeRepository.getAllWardrobeItems()
+                        if (itemsResult is Result.Success) {
+                            val itemsMap = itemsResult.data.associateBy { it.id }
 
-                    if (itemsResult is Result.Success) {
-                        val itemsMap = itemsResult.data.associateBy { it.id }
-
-                        val outfitsWithItems = outfitsResult.data.map { outfit ->
-                            val items = outfit.itemIds.mapNotNull { itemId ->
-                                itemsMap[itemId]
+                            val outfitsWithItems = outfitsResult.data.map { outfit ->
+                                val items = outfit.itemIds.mapNotNull { itemId ->
+                                    itemsMap[itemId]
+                                }
+                                OutfitWithItems(outfit, items)
                             }
-                            OutfitWithItems(outfit, items)
-                        }
 
+                            _uiState.value = _uiState.value.copy(
+                                outfits = outfitsWithItems,
+                                isLoading = false
+                            )
+                        } else {
+                            _uiState.value = _uiState.value.copy(
+                                outfits = outfitsResult.data.map { OutfitWithItems(it, emptyList()) },
+                                isLoading = false
+                            )
+                        }
+                    }
+                    is Result.Error -> {
                         _uiState.value = _uiState.value.copy(
-                            outfits = outfitsWithItems,
-                            isLoading = false
-                        )
-                    } else {
-                        _uiState.value = _uiState.value.copy(
-                            outfits = outfitsResult.data.map { OutfitWithItems(it, emptyList()) },
-                            isLoading = false
+                            isLoading = false,
+                            errorMessage = outfitsResult.exception.message
                         )
                     }
+                    is Result.Loading -> {}
                 }
-                is Result.Error -> {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = outfitsResult.exception.message
-                    )
-                }
-                is Result.Loading -> {}
             }
         }
     }
@@ -82,18 +82,19 @@ class SavedOutfitsViewModel(
     fun toggleFavorite(outfitId: String) {
         viewModelScope.launch {
             outfitRepository.toggleFavorite(outfitId)
-            loadOutfits() // Refresh
+            // No need to manually refresh - Flow will auto-update
         }
     }
 
     fun deleteOutfit(outfitId: String) {
         viewModelScope.launch {
             outfitRepository.deleteOutfit(outfitId)
-            loadOutfits() // Refresh
+            // No need to manually refresh - Flow will auto-update
         }
     }
 
     fun refresh() {
-        loadOutfits()
+        // No longer needed - Flow handles real-time updates
+        // Keeping method for backward compatibility but it's a no-op
     }
 }
