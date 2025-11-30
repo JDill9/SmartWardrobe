@@ -161,7 +161,8 @@ class OutfitBuilderViewModel(
                 occasion = state.selectedOccasions,
                 season = state.selectedSeason,
                 isFavorite = false,
-                imageUrl = selectedItems.firstOrNull()?.imageUrl ?: "" // Use first item's image as preview
+                imageUrl = selectedItems.firstOrNull()?.imageUrl ?: "", // Use first item's image as preview
+                ai3DModelUrl = state.generated3DModelUrl // Save generated 3D model URL
             )
 
             val result = outfitRepository.createOutfit(outfit)

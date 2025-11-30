@@ -294,7 +294,8 @@ fun ModelViewerWebView(
 fun ModelViewerDialog(
     modelUrl: String,
     modelId: String? = null,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSave: (() -> Unit)? = null  // Optional save callback for Build tab
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -320,8 +321,21 @@ fun ModelViewerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Show Save button only when onSave callback is provided (Build tab)
+                onSave?.let { saveCallback ->
+                    Button(onClick = {
+                        saveCallback()
+                        onDismiss()
+                    }) {
+                        Text("Save 3D Model")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Close")
+                }
             }
         }
     )

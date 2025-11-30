@@ -20,7 +20,8 @@ data class OutfitWithItems(
 data class SavedOutfitsUiState(
     val outfits: List<OutfitWithItems> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val viewing3DModelUrl: String? = null  // URL of 3D model currently being viewed
 )
 
 class SavedOutfitsViewModel(
@@ -96,5 +97,13 @@ class SavedOutfitsViewModel(
     fun refresh() {
         // No longer needed - Flow handles real-time updates
         // Keeping method for backward compatibility but it's a no-op
+    }
+
+    fun view3DModel(modelUrl: String) {
+        _uiState.value = _uiState.value.copy(viewing3DModelUrl = modelUrl)
+    }
+
+    fun close3DViewer() {
+        _uiState.value = _uiState.value.copy(viewing3DModelUrl = null)
     }
 }

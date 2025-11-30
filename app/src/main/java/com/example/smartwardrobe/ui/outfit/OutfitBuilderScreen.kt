@@ -48,12 +48,30 @@ fun OutfitBuilderScreen(
     }
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Show success message when outfit is saved
+    LaunchedEffect(state.isSaved) {
+        if (state.isSaved) {
+            snackbarHostState.showSnackbar(
+                message = if (state.generated3DModelUrl != null) {
+                    "Outfit and 3D model saved!"
+                } else {
+                    "Outfit saved!"
+                }
+            )
+        }
+    }
 
     // Show 3D model viewer dialog
     state.generated3DModelUrl?.let { modelUrl ->
         ModelViewerDialog(
             modelUrl = modelUrl,
-            onDismiss = { viewModel.clear3DModel() }
+            onDismiss = { viewModel.clear3DModel() },
+            onSave = {
+                // Save the outfit with the generated 3D model URL
+                viewModel.saveOutfit()
+            }
         )
     }
 
@@ -73,6 +91,9 @@ fun OutfitBuilderScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
         }
     ) { paddingValues ->
         if (state.isLoading && state.wardrobeItems.isEmpty()) {

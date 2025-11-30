@@ -18,9 +18,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.smartwardrobe.ai.ModelViewerDialog
 import com.example.smartwardrobe.data.model.WardrobeItem
 import com.example.smartwardrobe.ui.saved.OutfitWithItems
 import com.example.smartwardrobe.ui.saved.SavedOutfitsViewModel
@@ -31,6 +33,14 @@ fun Saved(
     viewModel: SavedOutfitsViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    // Show 3D model viewer dialog
+    state.viewing3DModelUrl?.let { modelUrl ->
+        ModelViewerDialog(
+            modelUrl = modelUrl,
+            onDismiss = { viewModel.close3DViewer() }
+        )
+    }
 
     // Dialog state for delete confirmation
     var outfitToDelete by remember { mutableStateOf<String?>(null) }
@@ -116,7 +126,8 @@ fun Saved(
                         OutfitCard(
                             outfitWithItems = outfitWithItems,
                             onFavoriteClick = { viewModel.toggleFavorite(outfitWithItems.outfit.id) },
-                            onDeleteClick = { outfitToDelete = outfitWithItems.outfit.id }
+                            onDeleteClick = { outfitToDelete = outfitWithItems.outfit.id },
+                            onView3DClick = { modelUrl -> viewModel.view3DModel(modelUrl) }
                         )
                     }
                 }
@@ -129,7 +140,8 @@ fun Saved(
 private fun OutfitCard(
     outfitWithItems: OutfitWithItems,
     onFavoriteClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onView3DClick: (String) -> Unit
 ) {
     val outfit = outfitWithItems.outfit
     val items = outfitWithItems.items
@@ -154,18 +166,34 @@ private fun OutfitCard(
                     Text(
                         text = outfit.name,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (outfit.occasion.isNotEmpty()) {
                         Text(
                             text = outfit.occasion.joinToString(", "),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
-                Row {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Show 3D viewer button if model exists
+                    outfit.ai3DModelUrl?.let { modelUrl ->
+                        TextButton(
+                            onClick = { onView3DClick(modelUrl) },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("View 3D", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                     IconButton(onClick = onFavoriteClick) {
                         Icon(
                             imageVector = if (outfit.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,

@@ -26,6 +26,7 @@ data class Outfit(
     val season: Season? = null,
     val isFavorite: Boolean = false,
     val imageUrl: String = "",  //added for image
+    val ai3DModelUrl: String? = null,  // URL to generated 3D model (optional)
     @ServerTimestamp
     val createdAt: Date? = null,
     @ServerTimestamp
