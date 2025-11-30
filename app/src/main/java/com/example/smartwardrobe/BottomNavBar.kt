@@ -15,13 +15,15 @@ import androidx.compose.runtime.getValue
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 
+
+
 @Composable
 fun BottomNavBar(navController: NavController) {
     val items = listOf(
         BottomNavItem.Home,
-        BottomNavItem.Account,
         BottomNavItem.Build,
-        BottomNavItem.Saved
+        BottomNavItem.Saved,
+        BottomNavItem.Account
     )
 
     NavigationBar {
@@ -30,9 +32,9 @@ fun BottomNavBar(navController: NavController) {
         items.forEach { item ->
             val icon = when (item) {
                 is BottomNavItem.Home -> Icons.Default.Home
-                is BottomNavItem.Account -> Icons.Default.Person
                 is BottomNavItem.Build -> Icons.Default.Create
                 is BottomNavItem.Saved -> Icons.Default.Favorite
+                is BottomNavItem.Account -> Icons.Default.Person
             }
 
             NavigationBarItem(
